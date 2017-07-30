@@ -1,0 +1,103 @@
+﻿[Proiect THREAD-uri]
+
+Regasirea de expresii folosind paradigma Map-Reduce
+
+In sistemele distribuite de mari dimensiuni procesul de monitorizare reprezinta o functionalitate foarte importanta. 
+Prin accesarea si procesarea datelor de monitorizare se pot obtine informatii legate de starea sistemului, anomalii, etc. 
+Pentru ca acest proces sa fie eficient, datele de monitorizare trebuiesc accesate si procesate cat mai rapid.
+Una din procesarile de baza asupra datelor de monitorizare este gasirea unor inregistrari care contin anumite expresii 
+(sau pattern-uri). 
+
+In aceasta tema se cere scrierea unui program paralel in Java care sa realizeze cautarea distribuita de expresii intr-un set 
+de fisiere primit ca input. Functionalitatea va fi asemanatoare cu cea a unui grep distribuit: Pentru fiecare expresie cautata 
+se va afisa numarul de aparitii si locatiile unde apare respectiva expresie.
+
+Pentru paralelizarea cautarii sa va folosi paradigma replicated workers (vezi laborator 5) si modelul MapReduce, ideea generala 
+fiind: fiecare document se fragmentează in parti de dimensiune fixa, care vor fi procesate in paralel, pentru fiecare parte 
+rezultand cate un vector partial continand pentru fiecare expresie cautata numarul de aparitii si liniile in care apare 
+relativ la un document. Apoi vectorii sunt combinati si va rezulta un vector ce caracterizeaza intregul document, si mai apoi 
+intregul set de documente.
+
+	Implementare
+Pentru rezolvarea acestei probleme se va folosi un model replicated-workers, asemanator cu modelul MapReduce folosit de 
+inginerii de la Google pentru procesarea unor seturi mari de documente in sisteme paralele si distribuite. Acest articol 
+prezinta modelul MapReduce folosit de Google si o parte dintre aplicatiile lui (mai importante pentru intelegerea modelului 
+sunt primele 4 pagini).
+
+MapReduce este modelul folosit in prezent de Google pentru a efectua complet indexarea paginilor web. MapReduce este un model 
+de programare paralela (si implementarea asociata) pentru procesarea si generarea unor seturi imense de date folosind sute 
+sau mii de procesoare. Modelul permite paralelizarea si distributia automata a taskurilor. Paradigma MapReduce se bazeaza pe 
+existenta a doua functii: map si reduce. Map primeste ca input o functie f si o lista si returneaza o noua lista aplicand 
+functia f fiecarui element din lista. Reduce combina rezultatele obtinute anterior.
+
+Mecanismul MapReduce functioneaza in modul urmator:
+
+Utilizatorul cere procesarea unui set de documente; aceasta cerere este adresata unui proces (fir de executie) master.
+Master-ul imparte documentele in fragmente de dimensiuni fixe care vor fi asignate unor procese (fire de executie) worker; 
+un worker va executa pentru un fragment de fisier o operatie numita “map”, care va genera niste rezultate partiale avand forma 
+unor perechi de tip (cheie, valoare)
+Dupa ce operatiile “map” au fost executate, master-ul asigneaza worker-ilor task-uri de tip “reduce”, care combina 
+rezultatele partiale.
+
+
+Avand in vedere ca se doreste o implementare particularizata a mecanismului MapReduce, se fac urmatoarele precizari:
+
+Avand la dispozitie memoria partajata intre thread-uri, rezultatele operatiilor "map" pot fi tinute in memorie; in mod normal 
+ele s-ar fi scris si pe disc.
+Nu se ia in considerare posibilitatea "defectarii" unora dintre workeri.
+Numarul de fire de executie pe care le porniti nu trebuie sa depinda de numarul de task-uri create.
+Ca mod de executie, puteti folosi (desi nu este obligatoriu) obiectele de tip "thread pool" care sunt deja implementate in 
+Java (vezi interfata ExecutorService); astfel, un thread worker poate prelucra mai multe task-uri.
+Pentru simplificare puteti utiliza mai multe thread pool-uri – de ex. unul pentru operatiile de tip "map", si unul pentru 
+operatiile de tip "reduce".
+
+Metoda main va trebui sa se afle intr-o clasa cu numele Main si nu va fi inclusa in vreun pachet.
+
+Cerinte pentru problema propusa:
+Dandu-se un set de NF fisiere si un set de NE expresii de cautat in fisierele respective, sa se determine numarul de aparitii 
+si liniile in care apar respectivele expresii.
+
+Pentru cerinta descrisa mai sus se considera:
+
+[MAP]: Impartirea fisierelor se va face in fragmente care contin NL linii din fisierul original (cu exceptia ultimului 
+fragment, care poate fi mai scurt).  Astfel un task de tip “map” : 
+poate primi ca input : numele fisierului, pozitia de inceput din fisier, pozitia de sfarsit si lista cu expresii de cautat
+si intoarce ca output: perechi de tip (cheie, valoare), in cazul problemei de fata: (nume document, vector partial). 
+Vectorul partial va contine pentru fiecare expresie cautata numarul de aparitii din fragmentul dat si identificatorii liniilor 
+in care apare (identificator linie = numarul liniei. Numerotarea liniilor in fisier porneste de la 1)
+
+[REDUCE]: In cazul problemei propuse, operatia "reduce" se face in 2 etape:
+In prima operatie de "reduce" se folosesc multimi continand doar perechile care se refera la un anumit document. La procesare 
+se va aduna numarul de aparitii ale expresiilor din vectorii obtinuti pentru fiecare parte dintr-un fisier.
+A doua operatie de tip "reduce" are ca scop obtinerea numarului total de aparitii ale expresiilor cautate (considerand 
+fisierele procesate). Pentru fiecare expresie se vor memora identificatorii liniilor in care apar (referitor la un anume 
+document)
+OBSERVATII [EXPRESII]:
+
+nu se vor lua in considerare pentru testare expresiile care contin newline(=> o expresie e continuta doar pe o singura linie)
+expresia cautata :
+1. poate contine orice caractere
+2. e considerata expresie regulata daca se gaseste intre ' ' (apostroafe)
+
+	Formatul datelor de intrare/ieşire.
+
+Programul va avea ca argumente in linia de comanda: NT (numarul maxim de thread-uri worker), numele unui fisier de intrare 
+si numele unui fisier de iesire (in aceasta ordine).
+
+Puteti imparti cele NT thread-uri in 2 seturi - un set de thread-uri care sa execute numai task-uri de tip map, si altul 
+care sa execute operatii de tip reduce. Puteti alege si cealalta varianta - in care fiecare thread din cele NT sa poata 
+executa si task-uri de tip map, si task-uri de tip reduce. Explicati in Readme cum ati procedat.
+
+Fisierul ce contine datele de intrare are urmatorul format:
+
+pe linia I: numarul de linii NL continute in fragmentele in care se vor imparti fisierele
+pe linia II: numarul NE de expresii de cautat
+pe urmatoarele NE linii: cele NE expresii de cautat (cate una pe linie)
+pe linia III+NE: numarul NF de fisiere de tip text in care se va face cautarea
+pe urmatoarele NF linii: numele celor NF fisiere (cate unul pe linie)
+
+In fisierul de iesire, pentru setul de expresii de cautat se va afisa numarul de aparitii totale, impreuna cu fisierele si liniile unde apar , in ordinea descrescatoare a numarului de aparitii.
+expresie1: [numar_aparitii]
+[nume_fisier]:[numar_linie] [numar_linie] ...
+[nume_fisier]:[numar_linie] [numar_linie] ...
+…....
