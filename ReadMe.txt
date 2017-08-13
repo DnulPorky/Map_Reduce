@@ -2,7 +2,7 @@
 
  	++Finding expressions using MapReduce paradigm++
 
- 	This project purpose is to build a multithread software that search for multiple expressions in multiple files/folders.
+ 	This Java project purpose is to build a multithread software that search for multiple expressions in multiple files/folders.
  	The search and process of its partial results are distributed using threads. In order to do this parallelism of tasks 
 I used the ReplicatedWorkers model and the MapReduce paradigm.
  	The software receives a list of expressions and a list of files that are to be searched, along with the number of threads 
